@@ -15,6 +15,7 @@ profiler() {
     clear
     echo "Profiler running"
     echo "To close profiler, in another terminal window enter command: 'kill -USR1 $$'"
+    stopProfiler=0
     timer=1
     while [ $stopProfiler -eq 0 ]; do
         #reads current CPU temperature in *C to 2 decimal palces
