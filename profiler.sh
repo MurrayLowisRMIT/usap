@@ -1,7 +1,5 @@
 #!/bin/bash
-
 stopProfiler=0
-quit=0
 
 #kill signal handling
 close() {
@@ -11,10 +9,23 @@ close() {
 #traps kill -USR1 signal
 trap close USR1
 
+#method to run profiler and take readings while script is active
 profiler() {
+    #timestamp of test
+    timestamp="`date +"%Y-%m-%d_%T"`"
+    #create new folder using timestamp to store graphs generated
+    mkdir "Profile_${timestamp}"
+    cd "Profile_${timestamp}" 
+
     clear
     echo "Profiler running"
-    echo "To close profiler, in another terminal window enter command: 'kill -USR1 $$'"
+    echo "To close profiler, in another terminal window enter either of the following commands:"
+    printf "    kill -USR1 $$\n"
+    printf "    kill -USR1 \$(pgrep profiler.sh)\n"
+
+    #creates data file and overwrites existing contents if it already exists
+    printf "" > data.csv
+
     stopProfiler=0
     timer=1
     while [ $stopProfiler -eq 0 ]; do
@@ -31,22 +42,24 @@ profiler() {
         #reads combined CPU usage for user and system as a percentage
         CPUusage=`awk '/all/ {print $3 + $5}' <(mpstat -u)`
 
-        #creates a time stamped data file and iteratively writes all data to a new line within file
-        echo "${timer},${CPUtemp},${GPUtemp},${clock},${memoryFree},${memoryUsed},${CPUusage}" >> data.csv
+        #iteratively writes all data to a new line in file each second
+        printf "${timer},${CPUtemp},${GPUtemp},${clock},${memoryFree},${memoryUsed},${CPUusage}\n" >> data.csv
 
         #pause 1 second and reiterate
         ((timer++))
         sleep 1
     done
     echo "Profiler terminated"
-    echo "Returning to menu"
-    sleep 2
-    clear
 }
 
+#method to run gnuplot to generate graphs
 plotter() {
+    echo "Generating graphs with gnuplot"
+    sleep 2
+    #check data file was created successfully then import into gnuplot to generate graphs
     if [[ -e data.csv ]] ;
     then
+    #create and format gnuplot file and write with contents of data file
 cat > gnuplot.p << END
 set datafile separator comma
 set terminal png size 700,700
@@ -70,55 +83,22 @@ set ylabel 'CPU utilisation (%)'
 set output 'cpu.png'
 plot "data.csv" using 1:7 with point pt 7 lc rgb "blue" title "CPU utilisation"
 END
+    #plot graphs using gnuplot based on contents of above gnuplot.p file
     gnuplot "gnuplot.p"
+    #remove no longer needed gnuplot.p file
+    rm gnuplot.p
     clear
-    echo "Graphs created from data file"
+    echo "Graphs created from data file and exported as .png files"
+    echo "Files saved to newly created folder 'Profile_${timestamp}'"
     else
-        echo "No data file, please run the profiler first to create one"
+        #I don't know what you'd have to do to get here, but just in case...
+        echo "An error occured, could not read data.csv file"
     fi
-    sleep 2
+    echo "Terminating..."
+    sleep 4
     clear
 }
 
-profilerMenu() {
-    clear
-    printf " Profiler menu\n"
-    printf " --------------------------------------\n"
-    printf "\n"
-    printf " 1: Start profiler\n"
-    printf " 2: Plot statistics with GNUPlot\n"
-    printf " 3: \n"
-    printf " 4: \n"
-    printf "\n"
-    printf " X) Exit\n"
-}
-
-#menu functions
-while [ $quit -eq 0 ] ; do
-    profilerMenu
-    read SELECTION
-    case $SELECTION in
-        1)
-            profiler
-            ;;
-
-        2)
-            plotter
-            ;;
-
-        3)
-            ;;
-
-        4)
-            ;;
-
-        [Xx])
-            quit=1
-            ;;
-        ?)
-            printf "Invalid selection"
-            sleep 2
-            ;;
-    esac
-    clear
-done
+#actually call and run each method
+profiler
+plotter
