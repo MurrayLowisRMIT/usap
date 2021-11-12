@@ -14,8 +14,8 @@ profiler() {
     #timestamp of test
     timestamp="`date +"%Y-%m-%d_%T"`"
     #create new folder using timestamp to store graphs generated
-    mkdir "Profile_${timestamp}"
-    cd "Profile_${timestamp}" 
+    mkdir -p "Profiles/${timestamp}"
+    cd "Profiles/${timestamp}"
 
     clear
     echo "Profiler running"
@@ -49,13 +49,10 @@ profiler() {
         ((timer++))
         sleep 1
     done
-    echo "Profiler terminated"
 }
 
 #method to run gnuplot to generate graphs
 plotter() {
-    echo "Generating graphs with gnuplot"
-    sleep 2
     #check data file was created successfully then import into gnuplot to generate graphs
     if [[ -e data.csv ]] ;
     then
@@ -89,7 +86,7 @@ END
     rm gnuplot.p
     clear
     echo "Graphs created from data file and exported as .png files"
-    echo "Files saved to newly created folder 'Profile_${timestamp}'"
+    echo "Files saved to newly created folder 'Profiles/${timestamp}'"
     else
         #I don't know what you'd have to do to get here, but just in case...
         echo "An error occured, could not read data.csv file"
@@ -100,5 +97,6 @@ END
 }
 
 #actually call and run each method
+./led.sh
 profiler
 plotter
