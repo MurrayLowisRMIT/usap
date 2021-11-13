@@ -96,7 +96,7 @@ END
     clear
 }
 
-#actually call and run each method
-./led.sh
+#call methods and run led script in background
+./led.sh &
 profiler
 plotter
