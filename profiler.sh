@@ -99,12 +99,15 @@ END
 #this line is only being run as sudo to get the password prompt (if applicable) out of the way before starting the script
 sudo print ""
 
-#start led manipulation script
+#start led manipulation script in the background
 ./led.sh &
 
 #call profiler methods
 profiler
 plotter
 
-#terminate led script upon profiler completion
-kill -USR2 $(pgrep led.sh)
+#terminate led script if still running
+if [[ -n $(pgrep led.sh) ]] ;
+then
+    kill -USR2 $(pgrep led.sh)
+fi
