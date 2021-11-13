@@ -22,7 +22,7 @@ profiler() {
     echo "To close profiler, in another terminal window enter either of the following commands:"
     printf "    kill -USR1 $$\n"
     printf "    kill -USR1 \$(pgrep profiler.sh)\n"
-
+    
     #creates data file and overwrites existing contents if it already exists
     printf "" > data.csv
 
@@ -96,7 +96,15 @@ END
     clear
 }
 
-#call methods and run led script in background
+#this line is only being run as sudo to get the password prompt (if applicable) out of the way before starting the script
+sudo print ""
+
+#start led manipulation script
 ./led.sh &
+
+#call profiler methods
 profiler
 plotter
+
+#terminate led script upon profiler completion
+kill -USR2 $(pgrep led.sh)
