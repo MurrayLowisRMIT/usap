@@ -1,18 +1,24 @@
 #!/bin/bash
+readonly AWK=/usr/bin/awk
+readonly BC=/usr/bin/bc
+readonly SED=/usr/bin/sed
+readonly VCGENCMD=/usr/bin/vcgencmd
+readonly DATE=/usr/bin/date
+readonly CAT=/usr/bin/cat
+readonly CUT=/usr/bin/cut
+readonly FREE=/usr/bin/free
+readonly MPSTAT=/usr/bin/mpstat
+readonly GNUPLOT=/usr/bin/gnuplot
+
 stopProfiler=0
 
-#kill signal handling
-close() {
-    stopProfiler=1
-}
-
 #traps kill -USR1 signal
-trap close USR1
+trap 'stopProfiler=1' USR1
 
 #method to run profiler and take readings while script is active
 profiler() {
     #timestamp of test
-    timestamp="`date +"%Y-%m-%d_%T"`"
+    timestamp="`${DATE} +"%Y-%m-%d_%T"`"
     #create new folder using timestamp to store graphs generated
     mkdir -p "Profiles/${timestamp}"
     cd "Profiles/${timestamp}"
@@ -30,17 +36,17 @@ profiler() {
     timer=1
     while [ $stopProfiler -eq 0 ]; do
         #reads current CPU temperature in *C to 2 decimal palces
-        CPUtemp=`echo "scale=2; $(cat /sys/class/thermal/thermal_zone0/temp) / 1000" | bc`
+        CPUtemp=`echo "scale=2; $(${CAT} /sys/class/thermal/thermal_zone0/temp) / 1000" | ${BC}`
         #reads GPU temp to 2 decimal places and removes other characters
-        GPUtemp=`vcgencmd measure_temp | sed -En "s/temp=(.*)'C/\10/p"`
+        GPUtemp=`${VCGENCMD} measure_temp | ${SED} -En "s/temp=(.*)'C/\10/p"`
         #reads current clock speed in GHz to 2 decimal places
-        clock=`echo "scale=2; $(vcgencmd measure_clock core | cut -c 14-) / 1000000000" | bc`
+        clock=`echo "scale=2; $(${VCGENCMD} measure_clock core | ${CUT} -c 14-) / 1000000000" | ${BC}`
         #reads free memory in gigabytes from 'free' command
-        memoryFree=`echo "scale=2; $(awk '/^Mem:/ {print $4}' <(free -b)) / 1000000000" | bc`
+        memoryFree=`echo "scale=2; $(${AWK} '/^Mem:/ {print $4}' <(${FREE} -b)) / 1000000000" | ${BC}`
         #reads used memory in gigabytes from 'free' command
-        memoryUsed=`echo "scale=2; $(awk '/^Mem:/ {print $3}' <(free -b)) / 1000000000" | bc`
+        memoryUsed=`echo "scale=2; $(${AWK} '/^Mem:/ {print $3}' <(${FREE} -b)) / 1000000000" | ${BC}`
         #reads combined CPU usage for user and system as a percentage
-        CPUusage=`awk '/all/ {print $3 + $5}' <(mpstat -u)`
+        CPUusage=`${AWK} '/all/ {print $3 + $5}' <(${MPSTAT} -u)`
 
         #iteratively writes all data to a new line in file each second
         printf "${timer},${CPUtemp},${GPUtemp},${clock},${memoryFree},${memoryUsed},${CPUusage}\n" >> data.csv
@@ -57,7 +63,7 @@ plotter() {
     if [[ -e data.csv ]] ;
     then
     #create and format gnuplot file and write with contents of data file
-cat > gnuplot.p << END
+${CAT} > gnuplot.p << END
 set datafile separator comma
 set terminal png size 700,700
 set title 'System Temperature'
@@ -81,7 +87,7 @@ set output 'cpu.png'
 plot "data.csv" using 1:7 with point pt 7 lc rgb "blue" title "CPU utilisation"
 END
     #plot graphs using gnuplot based on contents of above gnuplot.p file
-    gnuplot "gnuplot.p"
+    ${GNUPLOT} "gnuplot.p"
     #remove no longer needed gnuplot.p file
     rm gnuplot.p
     clear
